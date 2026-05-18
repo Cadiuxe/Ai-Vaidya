@@ -10,14 +10,18 @@ export default function Navbar() {
         onClick={() => setSidebarOpen((o) => !o)}
         title="Toggle sidebar"
       >
-        <span className="toggle-icon">{sidebarOpen ? "◀" : "▶"}</span>
+        <span className="material-symbols-outlined">
+          {sidebarOpen ? "left_panel_close" : "left_panel_open"}
+        </span>
       </button>
 
       <div className="nav-brand">
-        <span className="nav-om">ॐ</span>
+        <span className="nav-om material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>
+          self_improvement
+        </span>
         <div className="nav-titles">
-          <h1 className="nav-title">AI Vaidya</h1>
-          <p className="nav-subtitle">Ayurveda Intelligence Assistant</p>
+          <h1 className="nav-title">AI VAIDYA</h1>
+          <p className="nav-subtitle">Sacred Digital Wisdom</p>
         </div>
       </div>
 

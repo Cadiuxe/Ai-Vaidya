@@ -7,7 +7,10 @@ export default function SourceCard({ text }) {
   return (
     <div className="source-card">
       <div className="source-card-header">
-        <span className="source-label">📜 Reference from Knowledge Base</span>
+        <span className="source-label">
+          <span className="material-symbols-outlined" style={{ fontSize: '0.85rem', marginRight: '4px', verticalAlign: 'text-bottom' }}>description</span>
+          Reference from Knowledge Base
+        </span>
         {text.length > 120 && (
           <button
             className="source-toggle"

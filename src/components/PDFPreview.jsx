@@ -7,7 +7,7 @@ export default function PDFPreview() {
   return (
     <div className="pdf-preview">
       <div className="pdf-preview-header">
-        <span>📄</span>
+        <span className="material-symbols-outlined" style={{ fontSize: '1rem', color: 'var(--primary)' }}>picture_as_pdf</span>
         <span className="pdf-preview-name">{pdfName}</span>
       </div>
       <p className="pdf-preview-text">{preview}</p>

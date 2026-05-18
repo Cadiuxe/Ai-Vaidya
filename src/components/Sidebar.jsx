@@ -55,11 +55,11 @@ export default function Sidebar() {
   return (
     <aside className="sidebar">
       <div className="sidebar-header">
-        <span className="sidebar-icon">📜</span>
+        <span className="sidebar-icon material-symbols-outlined" style={{ fontSize: '1.1rem' }}>auto_stories</span>
         <span className="sidebar-label">Knowledge Base</span>
         {effectiveKnowledge && (
           <button className="clear-kb-btn" onClick={clearKnowledge} title="Clear knowledge base">
-            ✕
+            <span className="material-symbols-outlined" style={{ fontSize: '1rem' }}>close</span>
           </button>
         )}
       </div>
@@ -84,7 +84,8 @@ export default function Sidebar() {
               className="sample-btn"
               onClick={() => setKnowledgeBase(SAMPLE_TEXT)}
             >
-              📖 Load Sample Text
+              <span className="material-symbols-outlined" style={{ fontSize: '0.9rem', marginRight: '4px', verticalAlign: 'text-bottom' }}>menu_book</span>
+              Load Sample Text
             </button>
           </div>
         </>

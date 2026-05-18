@@ -11,7 +11,6 @@ export default function FileUpload() {
     setExtracting(true);
     setError("");
     try {
-      // Dynamically load pdf.js from CDN
       if (!window.pdfjsLib) {
         await new Promise((resolve, reject) => {
           const script = document.createElement("script");
@@ -79,18 +78,18 @@ export default function FileUpload() {
       />
       {extracting ? (
         <div className="upload-extracting">
-          <span className="spinner">⟳</span>
+          <span className="material-symbols-outlined spinner" style={{ fontSize: '1.2rem' }}>progress_activity</span>
           <span>Extracting text from PDF…</span>
         </div>
       ) : pdfName ? (
         <div className="upload-success">
-          <span>📄</span>
+          <span className="material-symbols-outlined" style={{ fontSize: '1.5rem', color: 'var(--primary)' }}>picture_as_pdf</span>
           <span className="pdf-name">{pdfName}</span>
           <span className="upload-change">Click to change</span>
         </div>
       ) : (
         <div className="upload-idle">
-          <span className="upload-icon">⬆</span>
+          <span className="upload-icon material-symbols-outlined">upload_file</span>
           <span className="upload-text">Upload Ayurveda PDF</span>
           <span className="upload-hint">Drag & drop or click · PDF up to 20MB</span>
         </div>

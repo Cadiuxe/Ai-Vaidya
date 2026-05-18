@@ -45,7 +45,9 @@ export default function VoiceInput({ onTranscript }) {
       title={listening ? "Stop listening" : "Voice input"}
       type="button"
     >
-      {listening ? "⏹" : "🎤"}
+      <span className="material-symbols-outlined" style={{ fontSize: '1.2rem', fontVariationSettings: listening ? "'FILL' 1" : "'FILL' 0" }}>
+        {listening ? "stop_circle" : "mic"}
+      </span>
     </button>
   );
 }

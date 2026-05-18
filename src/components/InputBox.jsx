@@ -52,7 +52,7 @@ export default function InputBox() {
           disabled={!value.trim() || isLoading}
           title="Send"
         >
-          ➤
+          <span className="material-symbols-outlined" style={{ fontSize: '1.3rem', fontVariationSettings: "'FILL' 1" }}>send</span>
         </button>
       </div>
       <p className="input-hint">

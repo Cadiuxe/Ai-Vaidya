@@ -6,7 +6,11 @@ export default function ChatMessage({ message }) {
 
   return (
     <div className={`chat-message ${isUser ? "user" : "assistant"}`}>
-      <div className="msg-avatar">{isUser ? "🙏" : "🌿"}</div>
+      <div className="msg-avatar">
+        <span className="material-symbols-outlined" style={{ fontSize: '1.1rem', fontVariationSettings: "'FILL' 1" }}>
+          {isUser ? "person" : "spa"}
+        </span>
+      </div>
       <div className="msg-content-wrap">
         <div className="msg-bubble">
           {content.split("\n").map((line, i) => (

@@ -16,7 +16,9 @@ export default function ChatHistory() {
     return (
       <div className="chat-welcome">
         <div className="welcome-card">
-          <span className="welcome-lotus">🪷</span>
+          <span className="welcome-lotus material-symbols-outlined" style={{ fontSize: '2.5rem', fontVariationSettings: "'FILL' 1" }}>
+            local_florist
+          </span>
           <h2 className="welcome-title">Namaste. I am your AI Vaidya.</h2>
           <p className="welcome-desc">
             Upload an Ayurvedic PDF or paste text in the sidebar, then ask me
