@@ -1,6 +1,6 @@
 """
 AI Vaidya — Offline RAG Backend
-Loads PDFs from pdf_database/, chunks them, embeds with SentenceTransformers,
+Loads PDFs from pdf_database/, chunks them, embeds with Google Gemini embeddings,
 stores in ChromaDB, and answers queries using retrieved context only.
 """
 
@@ -8,20 +8,46 @@ import os
 import shutil
 import hashlib
 from pathlib import Path
+from dotenv import load_dotenv
 
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import Chroma
-from langchain_community.embeddings import HuggingFaceEmbeddings
+
+load_dotenv()
 
 # ── Config ──────────────────────────────────────────────────────
 _THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 PDF_FOLDER = os.path.abspath(os.path.join(_THIS_DIR, "..", "..", "pdf_database"))
 CHROMA_DIR = os.path.abspath(os.path.join(_THIS_DIR, "chroma_db"))
-EMBED_MODEL = "all-MiniLM-L6-v2"  # fast, ~80MB, runs on CPU
 CHUNK_SIZE = 800
 CHUNK_OVERLAP = 150
 TOP_K = 3
+
+
+def _get_embeddings():
+    """
+    Get embedding function.
+    Uses FastEmbed (ONNX, ~50MB) for production/Render, falls back to HuggingFace for local dev.
+    """
+    # Try FastEmbed first (lightweight ONNX — works within 512MB)
+    try:
+        from langchain_community.embeddings import FastEmbedEmbeddings
+        embeddings = FastEmbedEmbeddings(model_name="BAAI/bge-small-en-v1.5")
+        print("[OK] Using FastEmbed ONNX embeddings (lightweight)")
+        return embeddings
+    except ImportError:
+        pass
+
+    # Fallback: local HuggingFace embeddings (heavier, for local dev)
+    from langchain_community.embeddings import HuggingFaceEmbeddings
+    embeddings = HuggingFaceEmbeddings(
+        model_name="all-MiniLM-L6-v2",
+        model_kwargs={"device": "cpu"},
+        encode_kwargs={"normalize_embeddings": True},
+    )
+    print("[OK] Using local HuggingFace embeddings")
+    return embeddings
 
 
 # ── 1. Load all PDFs ───────────────────────────────────────────
@@ -79,11 +105,7 @@ def get_vectorstore() -> Chroma:
     Build the ChromaDB vector store from PDFs.
     Re-uses existing store if PDFs haven't changed.
     """
-    embeddings = HuggingFaceEmbeddings(
-        model_name=EMBED_MODEL,
-        model_kwargs={"device": "cpu"},
-        encode_kwargs={"normalize_embeddings": True},
-    )
+    embeddings = _get_embeddings()
 
     hash_file = os.path.join(CHROMA_DIR, ".pdf_hash")
     current_hash = _compute_pdf_hash(PDF_FOLDER)
@@ -107,9 +129,24 @@ def get_vectorstore() -> Chroma:
 
     chunks = split_documents(docs)
 
-    # Remove old DB if exists
+    # Remove old DB if exists (handle OneDrive file locks)
     if os.path.exists(CHROMA_DIR):
-        shutil.rmtree(CHROMA_DIR)
+        import time
+        for attempt in range(3):
+            try:
+                shutil.rmtree(CHROMA_DIR)
+                break
+            except PermissionError:
+                print(f"[!] ChromaDB locked (attempt {attempt+1}/3), waiting...")
+                time.sleep(2)
+        else:
+            # If all retries fail, use a temp name
+            backup = CHROMA_DIR + f"_old_{int(time.time())}"
+            try:
+                os.rename(CHROMA_DIR, backup)
+            except Exception:
+                print("[!] Could not remove old ChromaDB, building in-place")
+                pass
 
     vectorstore = Chroma.from_documents(
         documents=chunks,

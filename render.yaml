@@ -3,7 +3,7 @@ services:
     name: ai-vaidya-api
     runtime: python
     buildCommand: pip install -r requirements.txt
-    startCommand: python api.py
+    startCommand: gunicorn api:app --bind 0.0.0.0:$PORT --timeout 120
     envVars:
       - key: GEMINI_API_KEY
         sync: false
