@@ -208,6 +208,69 @@ def _format_as_bullets(sentences: list[str], max_bullets: int = 8) -> str:
     return '\n'.join(bullets)
 
 
+# ── Chakra helpers ────────────────────────────────────────────
+import json
+
+CHAKRA_DEFAULTS = [
+    {"name": "Root", "blocked": False},
+    {"name": "Sacral", "blocked": False},
+    {"name": "Solar Plexus", "blocked": False},
+    {"name": "Heart", "blocked": False},
+    {"name": "Throat", "blocked": False},
+    {"name": "Third Eye", "blocked": False},
+    {"name": "Crown", "blocked": False},
+]
+
+# Keyword → affected chakra index mapping
+CHAKRA_KEYWORDS = {
+    "digestion": [2], "digestive": [2], "stomach": [2], "appetite": [2], "agni": [2],
+    "metabolism": [2], "liver": [2], "pitta": [2], "fire": [2], "gut": [2],
+    "stress": [2, 5], "anxiety": [2, 3], "depression": [3, 5], "mental": [5],
+    "mind": [5], "sleep": [5, 6], "insomnia": [5, 6], "meditation": [6],
+    "heart": [3], "blood": [3], "circulation": [3], "love": [3], "compassion": [3],
+    "lung": [3, 4], "respiratory": [3, 4], "breathing": [3, 4], "cough": [4], "cold": [4],
+    "throat": [4], "voice": [4], "communication": [4], "thyroid": [4],
+    "headache": [5], "migraine": [5], "eye": [5], "vision": [5], "brain": [5],
+    "skin": [1, 0], "joint": [0], "bone": [0], "pain": [0], "arthritis": [0],
+    "vata": [0, 1], "kapha": [0, 4], "dosha": [0, 2, 6],
+    "immune": [2, 3], "energy": [0, 2], "fatigue": [0, 2],
+    "reproductive": [1], "sexual": [1], "kidney": [1], "urinary": [1],
+    "emotion": [1, 3], "creativity": [1], "pleasure": [1],
+    "spiritual": [6], "consciousness": [6], "wisdom": [5, 6],
+    "turmeric": [2, 3], "ginger": [2], "ashwagandha": [0, 2], "tulsi": [3, 4],
+    "panchakarma": [0, 1, 2], "detox": [0, 1, 2], "cleanse": [0, 1, 2],
+}
+
+
+def _extract_chakras(response_text: str) -> list:
+    """Extract chakra JSON from Gemini response."""
+    try:
+        match = re.search(r'```chakras\n(.*?)\n```', response_text, re.DOTALL)
+        if match:
+            return json.loads(match.group(1).strip())
+    except (json.JSONDecodeError, AttributeError):
+        pass
+    return _infer_chakras("")
+
+
+def _infer_chakras(query: str) -> list:
+    """Infer blocked chakras from query keywords (offline fallback)."""
+    chakras = [dict(c) for c in CHAKRA_DEFAULTS]
+    query_lower = query.lower()
+    blocked_indices = set()
+    for keyword, indices in CHAKRA_KEYWORDS.items():
+        if keyword in query_lower:
+            blocked_indices.update(indices)
+    # Limit to max 3 blocked
+    for idx in list(blocked_indices)[:3]:
+        if 0 <= idx < 7:
+            chakras[idx]["blocked"] = True
+    # If nothing matched, block Solar Plexus (general health)
+    if not blocked_indices:
+        chakras[2]["blocked"] = True
+    return chakras
+
+
 # ── 5. Answer a query ─────────────────────────────────────────
 def get_answer(query: str, vectorstore: Chroma = None, chat_context: list = None) -> dict:
     """
@@ -275,6 +338,8 @@ def get_answer(query: str, vectorstore: Chroma = None, chat_context: list = None
             history_str += f"{role}: {msg['content'][:200]}\n"
 
     answer = None
+    chakra_data = _infer_chakras(query)  # default: keyword-based chakra mapping
+
     if api_key and api_key != "your_api_key_here":
         try:
             from google import genai
@@ -288,42 +353,70 @@ def get_answer(query: str, vectorstore: Chroma = None, chat_context: list = None
                 )
 
             prompt = (
-                f"You are an AI Vaidya (Ayurvedic expert). Based ONLY on the following retrieved context, "
+                f"You are AI Vaidya, a calm and wise Ayurvedic healer. Based ONLY on the retrieved context below, "
                 f"answer the user's query: '{query}'\n\n"
-                f"Rules:\n"
-                f"1. Answer ONLY using the provided context. Do not use outside knowledge.\n"
-                f"2. Do not hallucinate.\n"
-                f"3. Use Markdown formatting (bolding, bullet points) for readability.\n"
-                f"4. Keep it concise, clean, and professional.\n"
-                f"5. If the context does not contain the answer, state that there is no relevant information.\n"
-                f"6. If this is a follow-up question, use the conversation history to understand what the user is referring to.\n\n"
+                f"STRICT RULES:\n"
+                f"1. Be CONCISE and to-the-point. Maximum 4-5 short bullet points.\n"
+                f"2. Start with a brief 1-sentence summary answer (bold the key term).\n"
+                f"3. Use simple, conversational language — like a kind healer speaking to a patient.\n"
+                f"4. Answer ONLY from the provided context. Never hallucinate.\n"
+                f"5. If this is a follow-up, use conversation history for context.\n"
+                f"6. End with a brief, calming Ayurvedic recommendation if relevant.\n\n"
+                f"ALSO: Analyze which of the 7 chakras are most relevant to this health topic.\n"
+                f"Return a JSON block at the VERY END of your response in this exact format:\n"
+                f"```chakras\n"
+                f'[{{"name":"Root","blocked":false}},{{"name":"Sacral","blocked":true}},{{"name":"Solar Plexus","blocked":false}},{{"name":"Heart","blocked":false}},{{"name":"Throat","blocked":false}},{{"name":"Third Eye","blocked":false}},{{"name":"Crown","blocked":false}}]\n'
+                f"```\n"
+                f"Set \"blocked\":true for chakras that are affected/imbalanced based on the health topic.\n"
+                f"Only mark 1-3 chakras as blocked at most.\n\n"
                 f"{context_section}"
                 f"{history_section}"
             )
-            response = client.models.generate_content(
-                model="gemini-2.0-flash",
-                contents=prompt,
-            )
-            if response.text:
-                answer = response.text
+
+            # Try multiple models in order of preference
+            models_to_try = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"]
+            for model_name in models_to_try:
+                try:
+                    response = client.models.generate_content(
+                        model=model_name,
+                        contents=prompt,
+                    )
+                    if response.text:
+                        raw_response = response.text
+                        print(f"[OK] {model_name} responded ({len(raw_response)} chars)")
+                        # Parse chakra data from response
+                        chakra_data = _extract_chakras(raw_response)
+                        # If Gemini didn't return valid chakras, use keyword fallback
+                        if not chakra_data or len(chakra_data) != 7:
+                            chakra_data = _infer_chakras(query)
+                        # Remove the chakra JSON block from the visible answer
+                        answer = re.sub(r'```chakras\n.*?\n```', '', raw_response, flags=re.DOTALL).strip()
+                        break  # Success — stop trying models
+                except Exception as model_err:
+                    print(f"[!] {model_name} failed: {model_err}")
+                    continue  # Try next model
         except Exception as e:
-            print(f"[!] Gemini API failed: {e}. Falling back to offline mode.")
+            print(f"[!] Gemini setup failed: {e}. Falling back to offline mode.")
             answer = None
 
     if not answer:
         # Fallback to offline extraction
+        print("[INFO] Using offline fallback for answer generation")
         cleaned = _clean_text(combined_raw)
         sentences = _deduplicate_sentences(cleaned)
-        formatted_bullets = _format_as_bullets(sentences)
+        formatted_bullets = _format_as_bullets(sentences, max_bullets=5)
 
         answer = (
             f"**Based on the Ayurvedic knowledge base:**\n\n"
             f"{formatted_bullets}"
         )
 
+    print(f"[DEBUG] Returning {len(chakra_data)} chakras, blocked: {sum(1 for c in chakra_data if c.get('blocked'))}")
+
     return {
         "answer": answer,
         "sources": source_entries,
+        "chakras": chakra_data,
     }
 
 

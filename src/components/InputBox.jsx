@@ -6,16 +6,14 @@ import VoiceInput from "./VoiceInput";
 export default function InputBox() {
   const [value, setValue] = useState("");
   const { sendMessage } = useChat();
-  const { isLoading } = useChatContext();
-  const textareaRef = useRef();
+  const { isLoading, symptoms } = useChatContext();
+  const inputRef = useRef();
 
   const handleSend = () => {
     if (!value.trim() || isLoading) return;
     sendMessage(value.trim());
     setValue("");
-    if (textareaRef.current) {
-      textareaRef.current.style.height = "auto";
-    }
+    inputRef.current?.focus();
   };
 
   const handleKey = (e) => {
@@ -25,39 +23,46 @@ export default function InputBox() {
     }
   };
 
-  const handleInput = (e) => {
-    setValue(e.target.value);
-    e.target.style.height = "auto";
-    e.target.style.height = Math.min(e.target.scrollHeight, 140) + "px";
-  };
+  const placeholder = symptoms.length > 0
+    ? `Ask about your ${symptoms[0]}${symptoms.length > 1 ? " and more" : ""}...`
+    : "Describe your symptoms or ask about Ayurveda...";
 
   return (
-    <div className="input-box-area">
-      <div className="input-row">
-        <textarea
-          ref={textareaRef}
-          className="question-input"
-          value={value}
-          onInput={handleInput}
-          onChange={(e) => setValue(e.target.value)}
-          onKeyDown={handleKey}
-          placeholder="Ask a question about Ayurveda…"
-          rows={1}
-          disabled={isLoading}
-        />
-        <VoiceInput onTranscript={(t) => setValue((v) => v + t)} />
-        <button
-          className="send-btn"
-          onClick={handleSend}
-          disabled={!value.trim() || isLoading}
-          title="Send"
-        >
-          <span className="material-symbols-outlined" style={{ fontSize: '1.3rem', fontVariationSettings: "'FILL' 1" }}>send</span>
-        </button>
+    <div className="input-area">
+      <div className="input-area__inner">
+        <div className="input-row">
+          <VoiceInput onTranscript={(t) => setValue((v) => (v ? v + " " + t : t))} />
+          <input
+            ref={inputRef}
+            className="input-field"
+            type="text"
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            onKeyDown={handleKey}
+            placeholder={placeholder}
+            disabled={isLoading}
+          />
+          <button
+            className="send-btn"
+            onClick={handleSend}
+            disabled={!value.trim() || isLoading}
+            title="Send"
+          >
+            <span className="material-symbols-outlined">arrow_upward</span>
+          </button>
+        </div>
+        <p className="input-hint">
+          <span className="material-symbols-outlined input-hint__icon">
+            verified_user
+          </span>
+          Answers grounded in your knowledge base only
+          {symptoms.length > 0 && (
+            <span className="input-hint__context">
+              &nbsp;• {symptoms.length} symptom{symptoms.length !== 1 ? "s" : ""} tracked
+            </span>
+          )}
+        </p>
       </div>
-      <p className="input-hint">
-        Answers are grounded in your uploaded knowledge base only · Enter to send
-      </p>
     </div>
   );
 }
