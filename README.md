@@ -259,8 +259,8 @@ AI-Vaidya/
 ### 1️⃣ Clone the Repository
 
 ```bash
-git clone https://github.com/your-username/AI-Vaidya.git
-cd AI-Vaidya
+git clone https://github.com/Cadiuxe/Ai-Vaidya.git
+cd Ai-Vaidya
 ```
 
 ### 2️⃣ Backend Setup
