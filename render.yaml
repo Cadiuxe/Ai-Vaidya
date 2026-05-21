@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: ai-vaidya-api
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python api.py
+    envVars:
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: PYTHON_VERSION
+        value: "3.11"
+    rootDir: BACKEND
